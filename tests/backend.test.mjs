@@ -1,0 +1,25 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';import {mkdtempSync,rmSync,readFileSync,unlinkSync} from 'node:fs';import {tmpdir} from 'node:os';import {join} from 'node:path';import {backup} from 'node:sqlite';import {openDatabase,setUser} from '../backend/database.mjs';import {seed} from '../backend/seed.mjs';import {createApplication} from '../backend/application.mjs';
+test('persistent catalogue + admin API: auth, roles, CSRF, updates, backup',async()=>{
+ const dir=mkdtempSync(join(tmpdir(),'fashion-db-'));let db=openDatabase(join(dir,'test.sqlite'));try{seed(db);setUser(db,'owner','test-only-owner-password');setUser(db,'editor','test-only-editor-password','editor');let app=createApplication(db);let cookie='';
+ const call=(path,method='GET',body,extra={})=>app(new Request('http://localhost'+path,{method,headers:{origin:'http://localhost',cookie,...(body?{'content-type':'application/json'}:{}),...extra},body:body?JSON.stringify(body):undefined}));
+ let response=await call('/api/catalog');assert.equal(response.status,200);assert.equal((await call('/admin')).status,200);const initial=await response.json();assert.equal(initial.length,6);assert.ok(!JSON.stringify(initial).includes('supplierId'));assert.ok(!JSON.stringify(initial).includes('cost'));
+ assert.equal((await call('/api/admin/products')).status,401);assert.equal((await call('/data/fashion.sqlite')).status,404);assert.equal((await call('/backend/database.mjs')).status,404);assert.equal((await call('/tests/catalog.test.mjs')).status,404);
+ assert.equal((await call('/api/login','POST',{username:'owner',password:'bad'})).status,401);
+ response=await call('/api/login','POST',{username:'owner',password:'test-only-owner-password'});assert.equal(response.status,200);assert.match(response.headers.get('set-cookie'),/HttpOnly; SameSite=Strict/);cookie=response.headers.get('set-cookie').split(';')[0];
+ assert.equal((await call('/api/admin/suppliers','POST',{name:'secret supplier'},{origin:'http://evil.test'})).status,403);
+ response=await call('/api/admin/suppliers','POST',{name:'secret supplier',contacts:'private-contact',location:'Тбилиси',terms:'private terms',transport:1000,customs:500});assert.equal(response.status,200);const supplier=(await response.json()).id;
+ response=await call('/api/admin/media','POST',{base64:readFileSync(new URL('../assets/elite.jpg',import.meta.url)).toString('base64')});assert.equal(response.status,201);const uploaded=(await response.json()).image;assert.equal((await call('/assets/'+uploaded)).status,200);unlinkSync(new URL('../assets/'+uploaded,import.meta.url));
+ const draft={...initial[0],name:'Новое демопальто',sku:'NEW',cost:12345,supplierId:supplier,price:45678,variants:initial[0].variants.map(v=>({...v,id:'new-'+v.id}))};
+ response=await call('/api/admin/products','POST',draft);assert.equal(response.status,201);const id=(await response.json()).id;
+ let admin=await (await call('/api/admin/products')).json();let product=admin.find(p=>p.id===id);assert.equal(product.cost,12345);
+ response=await call('/api/admin/products/'+id,'PUT',{...product,name:'Обновлённое пальто',price:49999});assert.equal(response.status,200);
+ assert.equal((await call('/api/admin/products/'+id,'PUT',product)).status,400);
+ assert.equal((await call('/api/admin/products','POST',{...draft,price:-1})).status,400);
+ assert.equal((await call('/api/admin/products','POST',{...draft,images:['../data/fashion.sqlite']})).status,400);
+ assert.equal((await call('/api/admin/media','POST',{base64:Buffer.from('<svg onload="alert(1)">').toString('base64')})).status,400);
+ let pub=await (await call('/api/catalog')).json();assert.equal(pub.find(p=>p.id===id).price,49999);assert.ok(!JSON.stringify(pub).includes('private-contact'));assert.ok(!JSON.stringify(pub).includes('12345'));assert.ok(!JSON.stringify(pub).includes('secret supplier'));
+ response=await call('/api/login','POST',{username:'editor',password:'test-only-editor-password'});cookie=response.headers.get('set-cookie').split(';')[0];assert.equal((await call('/api/admin/suppliers')).status,403);admin=await (await call('/api/admin/products')).json();assert.ok(!JSON.stringify(admin).includes('supplierId'));product=admin.find(p=>p.id===id);assert.equal((await call('/api/admin/products/'+id,'PUT',{...product,cost:1,supplierId:null})).status,200);assert.equal(db.prepare('SELECT cost FROM products WHERE id=?').get(id).cost,12345);
+ await call('/api/logout','POST',{});assert.equal((await call('/api/admin/products')).status,401);
+ await backup(db,join(dir,'backup.sqlite'));db.close();db=openDatabase(join(dir,'test.sqlite'));app=createApplication(db);pub=await (await call('/api/catalog')).json();assert.equal(pub.find(p=>p.id===id).name,'Обновлённое пальто');seed(db);assert.equal(db.prepare('SELECT COUNT(*) AS n FROM products').get().n,7);const restored=openDatabase(join(dir,'backup.sqlite'));assert.equal(restored.prepare('SELECT COUNT(*) AS n FROM products').get().n,7);restored.close();
+ }finally{db.close();rmSync(dir,{recursive:true,force:true});}
+});

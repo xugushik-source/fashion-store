@@ -1,6 +1,7 @@
+const h=value=>String(value??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]));
 // Stage 1: shared demo data only. Commerce and persistence belong to later stages.
 const settings={name:'FASHION',siteId:'FASHION STORE',whatsapp:'',segments:[{id:'elite',name:'ELITE',description:'Исключительность в каждой детали',image:'elite.jpg'},{id:'contemporary',name:'CONTEMPORARY',description:'Ритм города. Ваш характер.',image:'contemporary.jpg'},{id:'everyday',name:'EVERYDAY',description:'Красота каждого дня',image:'everyday.jpg'}]};
-const products=FashionShop.enrich([
+const products=globalThis.catalogueFromServer ?? FashionShop.enrich([
 {id:1,name:'Пальто из шерстяной смеси',segment:'elite',category:'Женщинам',price:38900,image:'elite.jpg',popular:true,season:true,look:true},
 {id:2,name:'Жакет свободного кроя',segment:'contemporary',category:'Женщинам',price:18900,image:'contemporary.jpg',popular:true,look:true},
 {id:3,name:'Трикотажный джемпер',segment:'everyday',category:'Мужчинам',price:8900,image:'men.jpg',popular:true,season:true},
@@ -8,7 +9,7 @@ const products=FashionShop.enrich([
 {id:5,name:'Повседневный комплект',segment:'everyday',category:'Детям',price:7900,image:'kids.jpg'},
 {id:6,name:'Светлый вязаный кардиган',segment:'everyday',category:'Женщинам',price:9900,image:'everyday.jpg',season:true}]);
 const categories=[['Женщинам','elite.jpg'],['Мужчинам','men.jpg'],['Детям','kids.jpg'],['Аксессуары','bag.jpg']];
-const card=p=>`<article class="product"><a href="#product-${p.id}"><img src="assets/${p.image}" alt="${p.name} — демонстрационное фото" loading="lazy" width="450" height="600"><div class="meta"><span>${settings.segments.find(s=>s.id===p.segment).name}</span><span>${p.sku}</span></div><h3>${p.name}</h3></a><p>${FashionShop.money(p.price)}</p><small>Тестовая модель · не продаётся</small><div class="card-actions"><a href="#product-${p.id}">Выбрать размер ↗</a><button data-favorite="${p.id}" aria-label="В избранное: ${p.name}" aria-pressed="false">♡</button></div></article>`;
+const card=p=>`<article class="product"><a href="#product-${p.id}"><img src="assets/${p.image}" alt="${h(p.name)} — демонстрационное фото" loading="lazy" width="450" height="600"><div class="meta"><span>${settings.segments.find(s=>s.id===p.segment).name}</span><span>${h(p.sku)}</span></div><h3>${h(p.name)}</h3></a><p>${FashionShop.money(p.price)}</p><small>Тестовая модель · не продаётся</small><div class="card-actions"><a href="#product-${p.id}">Выбрать размер ↗</a><button data-favorite="${p.id}" aria-label="В избранное: ${h(p.name)}" aria-pressed="false">♡</button></div></article>`;
 document.querySelector('#world-grid').innerHTML=settings.segments.map((s,i)=>`<a href="#catalog" class="world" data-segment="${s.id}"><img src="assets/${s.image}" alt="Стиль ${s.name}" loading="lazy"><small>0${i+1} / МИР FASHION</small><h3>${s.name}</h3><p>${s.description}</p><span class="arrow">↗</span></a>`).join('');
 document.querySelector('#categories').innerHTML=categories.map(([c,img])=>`<a href="#catalog" class="category" data-category="${c}"><img src="assets/${img}" alt="${c}" loading="lazy"><span>${c==='Аксессуары'?'Обувь и аксессуары':c} ↗</span></a>`).join('');
 const tabs=['Все',...categories.map(c=>c[0])];document.querySelector('.tabs').innerHTML=tabs.map(c=>`<button data-category="${c}" class="${c==='Все'?'active':''}">${c}</button>`).join('');
