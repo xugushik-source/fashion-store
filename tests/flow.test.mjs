@@ -1,0 +1,21 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import vm from 'node:vm';
+import {readFileSync} from 'node:fs';
+test('application handlers: product variant → cart → quantity → favorites → reload',()=>{
+ const nodes=new Map(),saved=new Map();
+ const node=key=>{if(!nodes.has(key))nodes.set(key,{innerHTML:'',textContent:'',hidden:false,dataset:{},elements:[],listeners:{},classList:{contains:()=>false,toggle(){},remove(){}},addEventListener(type,fn){this.listeners[type]=fn;},setAttribute(){},append(){},scrollIntoView(){},focus(){}});return nodes.get(key);};
+ const doc={querySelector:node,getElementById:node,querySelectorAll:()=>[],createElement:()=>node('new'),body:{dataset:{}},addEventListener(type,fn){node('document').listeners[type]=fn;}};
+ const context=vm.createContext({document:doc,window:{addEventListener(){},scrollTo(){}},location:{hash:'#product-1'},localStorage:{getItem:k=>saved.get(k),setItem:(k,v)=>saved.set(k,v)},matchMedia:()=>({matches:true,addEventListener(){}}),setInterval(){},setTimeout(){},clearTimeout(){},FormData:class{constructor(){return new Map([['size','M'],['color','Чёрный']]);}}});
+ for(const file of ['shop-core.js','app.js','shop.js'])vm.runInContext(readFileSync(new URL('../'+file,import.meta.url),'utf8'),context);
+ assert.ok(node('#product-view').innerHTML.includes('Пальто'));
+ node('#variant-form').listeners.change();assert.equal(node('#add-cart').disabled,false);
+ node('#variant-form').listeners.submit({preventDefault(){}});
+ assert.equal(vm.runInContext('cart[0].quantity',context),1);
+ vm.runInContext("location.hash='#cart';route()",context);assert.ok(node('#cart-view').innerHTML.includes('389,00 GEL'));
+ const click=dataset=>node('document').listeners.click({target:{closest:selector=>selector==='[data-quantity]'&&dataset.delta?{dataset}:selector==='[data-favorite]'&&dataset.favorite?{dataset}:null}});
+ click({quantity:'1-1-0',delta:'1'});assert.equal(vm.runInContext('cart[0].quantity',context),2);assert.ok(node('#cart-view').innerHTML.includes('778,00 GEL'));
+ click({favorite:'1'});assert.equal(vm.runInContext('favorites.includes(1)',context),true);
+ assert.ok([...saved.keys()].some(k=>k.endsWith('cart')));
+ vm.runInContext("cart=shop.normalize(storage.read('cart',[]),products)",context);assert.equal(vm.runInContext('cart[0].quantity',context),2);
+});
