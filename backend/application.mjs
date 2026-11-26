@@ -1,3 +1,4 @@
+import {purchase,moneyEntry,report,customers,saveCustomerNote} from './finance.mjs';
 import {stockCommand} from './inventory.mjs';
 import {createOrder,getOrder,publicReceipt,getSettings,saveSettings,updateOrderStatus,statusLabels} from './orders.mjs';
 import {readFile,writeFile,mkdir} from 'node:fs/promises';import {resolve} from 'node:path';import {randomBytes} from 'node:crypto';import {authenticate,listProducts,saveProduct,saveSupplier} from './database.mjs';
@@ -13,6 +14,13 @@ export function createApplication(db,{secure=false}={}){const sessions=new Map()
  if(path==='/api/session'&&method==='GET')return json(user);
  if(path==='/api/logout'&&method==='POST'){sessions.delete(token);return json({ok:true},200,{'Set-Cookie':'fashion_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0'});}
  if(!path.startsWith('/api/admin/'))return json({error:'Не найдено'},404);
+ if(['/api/admin/purchases','/api/admin/payments','/api/admin/expenses','/api/admin/report'].includes(path)&&user.role!=='owner')return json({error:'Доступ только владельцу'},403);
+ if(path==='/api/admin/report'&&method==='GET')return json(report(db,Object.fromEntries(url.searchParams)));
+ if(path==='/api/admin/purchases'&&method==='POST')return json(purchase(db,await bodyJSON(req),user.username));
+ if(path==='/api/admin/payments'&&method==='POST')return json(moneyEntry(db,'payment',await bodyJSON(req)));
+ if(path==='/api/admin/expenses'&&method==='POST')return json(moneyEntry(db,'expense',await bodyJSON(req)));
+ if(path==='/api/admin/customers'&&method==='GET')return json(customers(db));
+ if(path==='/api/admin/customers'&&method==='PUT')return json(saveCustomerNote(db,await bodyJSON(req)));
  if(path==='/api/admin/stock'&&method==='GET')return json({inventory:db.prepare('SELECT * FROM inventory').all(),log:db.prepare('SELECT * FROM stock_log ORDER BY id DESC LIMIT 500').all()});
  if(path==='/api/admin/stock'&&method==='POST'){if(user.role!=='owner')return json({error:'Доступ только владельцу'},403);return json(stockCommand(db,await bodyJSON(req),user.username));}
  if((path.includes('/settings'))&&user.role!=='owner')return json({error:'Доступ только владельцу'},403);
