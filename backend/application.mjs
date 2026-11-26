@@ -1,3 +1,4 @@
+import {stockCommand} from './inventory.mjs';
 import {createOrder,getOrder,publicReceipt,getSettings,saveSettings,updateOrderStatus,statusLabels} from './orders.mjs';
 import {readFile,writeFile,mkdir} from 'node:fs/promises';import {resolve} from 'node:path';import {randomBytes} from 'node:crypto';import {authenticate,listProducts,saveProduct,saveSupplier} from './database.mjs';
 const root=resolve(import.meta.dirname,'..');
@@ -12,12 +13,14 @@ export function createApplication(db,{secure=false}={}){const sessions=new Map()
  if(path==='/api/session'&&method==='GET')return json(user);
  if(path==='/api/logout'&&method==='POST'){sessions.delete(token);return json({ok:true},200,{'Set-Cookie':'fashion_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0'});}
  if(!path.startsWith('/api/admin/'))return json({error:'Не найдено'},404);
+ if(path==='/api/admin/stock'&&method==='GET')return json({inventory:db.prepare('SELECT * FROM inventory').all(),log:db.prepare('SELECT * FROM stock_log ORDER BY id DESC LIMIT 500').all()});
+ if(path==='/api/admin/stock'&&method==='POST'){if(user.role!=='owner')return json({error:'Доступ только владельцу'},403);return json(stockCommand(db,await bodyJSON(req),user.username));}
  if((path.includes('/settings'))&&user.role!=='owner')return json({error:'Доступ только владельцу'},403);
  if(path==='/api/admin/settings'&&method==='GET')return json(getSettings(db));
  if(path==='/api/admin/settings'&&method==='PUT')return json(saveSettings(db,await bodyJSON(req)));
  if(path==='/api/admin/orders'&&method==='GET')return json({labels:statusLabels,orders:db.prepare('SELECT id FROM orders ORDER BY id DESC').all().map(r=>{const o=getOrder(db,r.id);return user.role==='owner'?o:{...o,lines:o.lines.map(({cost,supplierId,...line})=>line)};})});
  if(path==='/api/admin/orders'&&method==='POST')return json(publicReceipt(createOrder(db,await bodyJSON(req),user.username),getSettings(db)),201);
- if(/^\/api\/admin\/orders\/\d+\/status$/.test(path)&&method==='PUT'){const id=Number(path.split('/')[4]),body=await bodyJSON(req);const result=updateOrderStatus(db,id,body.status,user.username);return json({id:result.id,status:result.status});}
+ if(/^\/api\/admin\/orders\/\d+\/status$/.test(path)&&method==='PUT'){const id=Number(path.split('/')[4]),body=await bodyJSON(req);const result=updateOrderStatus(db,id,body.status,user.username,body.condition);return json({id:result.id,status:result.status});}
  if(path.includes('/suppliers')&&user.role!=='owner')return json({error:'Доступ только владельцу'},403);
  if(path==='/api/admin/products'&&method==='GET'){const list=listProducts(db,true);return json(user.role==='owner'?list:list.map(({cost,supplierId,...p})=>p));}
  if(/^\/api\/admin\/products(?:\/\d+)?$/.test(path)&&['POST','PUT'].includes(method)){const body=await bodyJSON(req);const id=path.match(/\/(\d+)$/)?.[1];if((method==='PUT')!==!!id)return json({error:'Неверный маршрут'},405);if(user.role!=='owner'){const old=id?listProducts(db,true).find(p=>p.id===Number(id)):null;body.cost=old?.cost||0;body.supplierId=old?.supplierId||null;}for(const image of body.images||[]){if(typeof image!=='string'||! /^(?:uploads\/)?[a-zA-Z0-9_-]+\.(jpg|png|webp)$/.test(image))throw Error('Некорректное фото');try{await readFile(resolve(root,'assets',image));}catch{throw Error('Фотография не найдена');}}const saved=saveProduct(db,body,id?Number(id):undefined);return json({id:saved},id?200:201);}

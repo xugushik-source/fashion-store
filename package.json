@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "node server.mjs",
     "start": "node server.mjs",
-    "check": "node --check admin.js && node --check loader.js && node --check backend/application.mjs && node --check backend/database.mjs && node --check app.js && node --check shop.js && node --check shop-core.js && node --check server.mjs && node tests/catalog.test.mjs && node tests/shop.test.mjs && node tests/flow.test.mjs && node tests/backend.test.mjs && node --check checkout.js && node --check operations.js && node tests/orders.test.mjs",
+    "check": "node --check admin.js && node --check loader.js && node --check backend/application.mjs && node --check backend/database.mjs && node --check app.js && node --check shop.js && node --check shop-core.js && node --check server.mjs && node tests/catalog.test.mjs && node tests/shop.test.mjs && node tests/flow.test.mjs && node tests/backend.test.mjs && node --check checkout.js && node --check operations.js && node tests/orders.test.mjs && node tests/inventory.test.mjs",
     "init": "node manage.mjs",
     "backup": "node manage.mjs backup",
     "user": "node create-user.mjs"
