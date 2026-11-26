@@ -1,3 +1,4 @@
+import {orderSchema} from './orders.mjs';
 import {DatabaseSync} from 'node:sqlite';
 import {scryptSync,randomBytes,timingSafeEqual} from 'node:crypto';
 import {mkdirSync,chmodSync} from 'node:fs';
@@ -7,7 +8,7 @@ CREATE TABLE IF NOT EXISTS users(username TEXT PRIMARY KEY, hash TEXT NOT NULL, 
 CREATE TABLE IF NOT EXISTS suppliers(id INTEGER PRIMARY KEY, data TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS products(id INTEGER PRIMARY KEY, data TEXT NOT NULL, supplier_id INTEGER REFERENCES suppliers(id), cost INTEGER NOT NULL DEFAULT 0, version INTEGER NOT NULL DEFAULT 1);
 CREATE TABLE IF NOT EXISTS variants(id TEXT PRIMARY KEY, product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE, data TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS metadata(key TEXT PRIMARY KEY,value TEXT NOT NULL);`);return db;}
+CREATE TABLE IF NOT EXISTS metadata(key TEXT PRIMARY KEY,value TEXT NOT NULL);`);orderSchema(db);return db;}
 export function setUser(db,username,password,role='owner'){if(!/^[a-zA-Z0-9_-]{3,50}$/.test(username)||typeof password!=='string'||password.length<12||password.length>256||!['owner','editor'].includes(role))throw Error('Имя: 3–50 латинских символов; пароль: 12–256; роль owner/editor');const salt=randomBytes(16).toString('hex'),hash=scryptSync(password,salt,64).toString('hex');db.prepare('INSERT OR REPLACE INTO users VALUES(?,?,?,?)').run(username,hash,salt,role);}
 export function authenticate(db,name,password){const u=db.prepare('SELECT * FROM users WHERE username=?').get(name);const hash=scryptSync(password,u?.salt||'dummy-salt',64);return u&&timingSafeEqual(hash,Buffer.from(u.hash,'hex'))?{username:u.username,role:u.role}:null;}
 const text=(v,max=5000)=>{if(typeof v!=='string'||v.length>max)throw Error('Некорректная строка');return v.trim();};

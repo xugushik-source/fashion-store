@@ -1,6 +1,7 @@
 const h=value=>String(value??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]));
 // Stage 1: shared demo data only. Commerce and persistence belong to later stages.
 const settings={name:'FASHION',siteId:'FASHION STORE',whatsapp:'',segments:[{id:'elite',name:'ELITE',description:'Исключительность в каждой детали',image:'elite.jpg'},{id:'contemporary',name:'CONTEMPORARY',description:'Ритм города. Ваш характер.',image:'contemporary.jpg'},{id:'everyday',name:'EVERYDAY',description:'Красота каждого дня',image:'everyday.jpg'}]};
+if(globalThis.storeSettings){Object.assign(settings,{name:storeSettings.name,siteId:storeSettings.siteId,whatsapp:storeSettings.whatsapp});settings.segments.forEach(s=>s.name=storeSettings.segments[s.id]);document.querySelectorAll('.brand').forEach(el=>{el.firstChild.textContent=storeSettings.name;});document.title=storeSettings.name+' — магазин одежды';}
 const products=globalThis.catalogueFromServer ?? FashionShop.enrich([
 {id:1,name:'Пальто из шерстяной смеси',segment:'elite',category:'Женщинам',price:38900,image:'elite.jpg',popular:true,season:true,look:true},
 {id:2,name:'Жакет свободного кроя',segment:'contemporary',category:'Женщинам',price:18900,image:'contemporary.jpg',popular:true,look:true},
