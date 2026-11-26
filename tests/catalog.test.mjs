@@ -1,0 +1,11 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync,existsSync} from 'node:fs';
+import vm from 'node:vm';
+const elements=new Map();
+const el=key=>{if(!elements.has(key))elements.set(key,{innerHTML:'',hidden:false,dataset:{},classList:{toggle(){},remove(){}},setAttribute(){}});return elements.get(key);};
+const context=vm.createContext({window:{},document:{querySelector:el,querySelectorAll:()=>[],body:{dataset:{}},addEventListener(){}},matchMedia:()=>({matches:true,addEventListener(){}}),setInterval(){},console});
+vm.runInContext(readFileSync(new URL('../app.js',import.meta.url),'utf8'),context);
+test('all three segments open matching demo assortment',()=>{for(const segment of ['elite','contemporary','everyday']){vm.runInContext(`render({segment:'${segment}'})`,context);assert.ok(el('#products').innerHTML.includes('product'));assert.equal(context.document.body.dataset.world,segment);assert.ok(el('#catalog-title').textContent);}});
+test('budget and empty-category paths',()=>{vm.runInContext('render({budget:100})',context);assert.ok(el('#products').innerHTML.includes('89 GEL'));assert.ok(!el('#products').innerHTML.includes('389 GEL'));vm.runInContext("render({category:'missing'})",context);assert.equal(el('#empty').hidden,false);});
+test('every demo image is a nonempty local JPEG',()=>{const source=readFileSync(new URL('../app.js',import.meta.url),'utf8')+readFileSync(new URL('../style.css',import.meta.url),'utf8');for(const name of new Set(source.match(/[a-z0-9]+\.jpg/g))){const path=new URL('../assets/'+name,import.meta.url);assert.ok(existsSync(path),name);const bytes=readFileSync(path);assert.ok(bytes.length>1000,name);assert.equal(bytes[0],255);assert.equal(bytes[1],216);}});
