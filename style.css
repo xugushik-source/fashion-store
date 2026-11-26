@@ -8,3 +8,5 @@
 
 html[lang=ka] body{font-family:'Noto Sans Georgian',system-ui,sans-serif}html[lang=hy] body{font-family:'Noto Sans Armenian',system-ui,sans-serif}html:not([lang=ru]) h1,html:not([lang=ru]) h2{font-family:inherit;letter-spacing:0}html:not([lang=ru]) .hero h1{font-size:clamp(45px,7vw,85px);line-height:1.2}#language{font-size:10px;max-width:88px;padding:8px;color:#eee;background:#22221e}#language option{color:#eee;background:#22221e}@media(max-width:600px){header{flex-wrap:wrap;height:auto;min-height:95px;padding-top:15px;padding-bottom:15px}#language{max-width:88px}html:not([lang=ru]) .world h3{font-size:24px}html:not([lang=ru]) .section-heading h2{font-size:32px}}
 .product-detail video{width:100%;max-height:400px;margin:15px 0}
+.product{min-width:0;overflow-wrap:anywhere}.world,.section-heading,.product-detail>div{min-width:0}img{max-width:100%}h1,h2,h3,p,a,button{overflow-wrap:break-word}.shop-page .product-detail h1{overflow-wrap:anywhere}
+@media(max-width:600px){header nav{top:100%}}#terms p{max-width:850px;line-height:1.9;white-space:pre-wrap}

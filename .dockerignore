@@ -1,0 +1,8 @@
+.git
+.env
+.env.*
+data
+assets/uploads
+node_modules
+*.zip
+*.log
